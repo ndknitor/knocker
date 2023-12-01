@@ -1,0 +1,6 @@
+UserId,Email,Fullname,Phone,Address,RoleId
+1,john.doe@email.com,John Doe,1234567890,123 Main St,1
+2,jane.smith@email.com,Jane Smith,9876543210,456 Oak St,2
+3,bob.johnson@email.com,Bob Johnson,5551234567,789 Pine St,1
+4,alice.jones@email.com,Alice Jones,3334445555,101 Elm St,3
+5,david.wilson@email.com,David Wilson,9998887777,202 Maple St,2
