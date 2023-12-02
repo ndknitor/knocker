@@ -3,9 +3,8 @@ using System.Data.SqlClient;
 using System.Globalization;
 using CommandLine;
 using CsvHelper;
-using CsvHelper.Configuration;
 using Dapper;
-using Newtonsoft.Json;
+using MySqlConnector;
 
 [Verb("resetdb", HelpText = "Reset database from file")]
 public class ResetDbOption
@@ -17,7 +16,7 @@ public class ResetDbOption
     [Option('d', "delimiter", Required = false, HelpText = "Delimter of the CSV file")]
     public string Delimiter { get; set; } = ";";
     [Option('p', "provider", Required = false, HelpText = "Database provider")]
-    public DatabaseProvider Provider { get; set; }
+    public string Provider { get; set; } = "mssql";
     private IDbConnection c;
     private IDbConnection connection
     {
@@ -28,7 +27,8 @@ public class ResetDbOption
                 switch (Provider)
                 {
                     default: c = new SqlConnection(ConnectionString); break;
-                    case DatabaseProvider.Mssql: c = new SqlConnection(ConnectionString); break;
+                    case mssql: c = new SqlConnection(ConnectionString); break;
+                    case mysql: c = new MySqlConnection(ConnectionString); break;
                 }
             }
             return c;
@@ -37,6 +37,12 @@ public class ResetDbOption
 
     public async Task Call()
     {
+        string[] allowedProviders = { mssql, mysql, postgres };
+        if (Array.IndexOf(allowedProviders, Provider) == -1)
+        {
+            Console.WriteLine($"Invalid database provider: {Provider}. Allowed values are: {string.Join(", ", allowedProviders)}.");
+            Environment.Exit(1);
+        }
         await DeleteData();
         await InsertData();
     }
@@ -47,7 +53,9 @@ public class ResetDbOption
             switch (Provider)
             {
                 default: await MssqlDeleteData(); break;
-                case DatabaseProvider.Mysql: await MssqlDeleteData(); break;
+                case mssql: await MssqlDeleteData(); break;
+                case mysql: await MysqlDeleteData(); break;
+                case postgres: Console.Error.WriteLine("Future feature, postgres is not yet supported."); Environment.Exit(1); break;
             }
             Console.WriteLine("All data deleted successfully.");
         }
@@ -57,6 +65,7 @@ public class ResetDbOption
             Environment.Exit(1);
         }
     }
+
     private async Task InsertData()
     {
         try
@@ -65,10 +74,25 @@ public class ResetDbOption
             {
                 var tableName = new FileInfo(csvFilePath).Name.Split('.')[0];
                 string[] columns = null;
-                IEnumerable<dynamic> csvData = ReadCsv(csvFilePath, out columns);
+                IEnumerable<IDictionary<string, object>> data = ReadCsv(csvFilePath);
+                if (data.Count() > 0)
+                {
+                    columns = data.ElementAt(0).Keys.ToArray();
+                }
+                else
+                {
+                    Console.WriteLine($"No data include for table {tableName}");
+                    continue;
+                }
+                string insertCommand = null;
                 string columnsText = string.Join(", ", columns);
-                //string insertCommand = $"INSERT INTO {tableName} ({columns}) VALUES (@{string.Join(", @", csvData[0].Keys)})";
-                //await connection.ExecuteAsync(insertCommand, csvData);
+                switch (Provider)
+                {
+                    default: insertCommand = $"INSERT INTO [{tableName}] ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
+                    case mssql: insertCommand = $"INSERT INTO [{tableName}] ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
+                    case mysql: insertCommand = $"INSERT INTO {tableName} ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
+                }
+                await connection.ExecuteAsync(insertCommand, data);
                 Console.WriteLine($"Data inserted into table {tableName} successfully.");
             }
         }
@@ -79,21 +103,49 @@ public class ResetDbOption
         }
 
     }
-
     private async Task MssqlDeleteData()
     {
         await connection.ExecuteAsync("EXEC sp_MSForEachTable 'DELETE FROM ?'");
     }
-
-    public IEnumerable<dynamic> ReadCsv(string filePath, out string[] columns)
+    private async Task MysqlDeleteData()
+    {
+        string deleteQuery = await connection.QueryFirstAsync<string>(@"
+SET FOREIGN_KEY_CHECKS = 0;
+SET @tables = NULL;
+SELECT GROUP_CONCAT(CONCAT('DELETE FROM ', table_name) SEPARATOR ';') INTO @tables
+FROM information_schema.tables WHERE table_schema = 'Etdb';
+SELECT @tables;", new { dbname = connection.Database });
+        await connection.ExecuteAsync($"{deleteQuery};SET FOREIGN_KEY_CHECKS = 1;");
+    }
+    public IEnumerable<IDictionary<string, object>> ReadCsv(string filePath)
     {
         using (var reader = new StreamReader(filePath))
-        using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture) { Delimiter = Delimiter }))
+        using (var csv = new CsvReader(reader, new CsvHelper.Configuration.CsvConfiguration(CultureInfo.InvariantCulture)
         {
-            columns = csv.Context.Reader.HeaderRecord;
-            return csv.GetRecords<dynamic>().ToList();
+            Delimiter = Delimiter
+        }))
+        {
+            var records = csv.GetRecords<dynamic>();
+            var result = new List<IDictionary<string, object>>();
+
+            foreach (var record in records)
+            {
+                var dictionary = new Dictionary<string, object>();
+
+                foreach (var keyValuePair in record)
+                {
+                    dictionary[keyValuePair.Key] = keyValuePair.Value;
+                }
+
+                result.Add(dictionary);
+            }
+
+            return result;
         }
     }
+    const string mssql = "mssql";
+    const string mysql = "mysql";
+    const string postgres = "postgres";
 }
 public enum DatabaseProvider
 {
