@@ -43,79 +43,75 @@ public class ResetDbOption
             Console.WriteLine($"Invalid database provider: {Provider}. Allowed values are: {string.Join(", ", allowedProviders)}.");
             Environment.Exit(1);
         }
-        await DeleteData();
-        await InsertData();
-    }
-    private async Task DeleteData()
-    {
         try
         {
-            switch (Provider)
-            {
-                default: await MssqlDeleteData(); break;
-                case mssql: await MssqlDeleteData(); break;
-                case mysql: await MysqlDeleteData(); break;
-                case postgres: Console.Error.WriteLine("Future feature, postgres is not yet supported."); Environment.Exit(1); break;
-            }
-            Console.WriteLine("All data deleted successfully.");
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine(ex.Message);
-            Environment.Exit(1);
-        }
-    }
-
-    private async Task InsertData()
-    {
-        try
-        {
-            foreach (string csvFilePath in InputPaths)
-            {
-                var tableName = new FileInfo(csvFilePath).Name.Split('.')[0];
-                string[] columns = null;
-                IEnumerable<IDictionary<string, object>> data = ReadCsv(csvFilePath);
-                if (data.Count() > 0)
-                {
-                    columns = data.ElementAt(0).Keys.ToArray();
-                }
-                else
-                {
-                    Console.WriteLine($"No data include for table {tableName}");
-                    continue;
-                }
-                string insertCommand = null;
-                string columnsText = string.Join(", ", columns);
-                switch (Provider)
-                {
-                    default: insertCommand = $"INSERT INTO [{tableName}] ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
-                    case mssql: insertCommand = $"INSERT INTO [{tableName}] ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
-                    case mysql: insertCommand = $"INSERT INTO {tableName} ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
-                }
-                await connection.ExecuteAsync(insertCommand, data);
-                Console.WriteLine($"Data inserted into table {tableName} successfully.");
-            }
+            await DeleteData();
+            await InsertData();
         }
         catch (System.Exception ex)
         {
             Console.Error.WriteLine(ex.Message);
             Environment.Exit(1);
+            throw;
         }
 
     }
+    private async Task DeleteData()
+    {
+        switch (Provider)
+        {
+            default: await MssqlDeleteData(); break;
+            case mssql: await MssqlDeleteData(); break;
+            case mysql: await MysqlDeleteData(); break;
+            case postgres: Console.Error.WriteLine("Future feature, postgres is not yet supported."); Environment.Exit(1); break;
+        }
+    }
+
+    private async Task InsertData()
+    {
+        foreach (string csvFilePath in InputPaths)
+        {
+            var tableName = new FileInfo(csvFilePath).Name.Split('.')[0];
+            string[] columns = null;
+            IEnumerable<IDictionary<string, object>> data = ReadCsv(csvFilePath);
+            if (data.Count() > 0)
+            {
+                columns = data.ElementAt(0).Keys.ToArray();
+            }
+            else
+            {
+                Console.WriteLine($"No data include for table {tableName}");
+                continue;
+            }
+            string insertCommand = null;
+            string columnsText = string.Join(", ", columns);
+            switch (Provider)
+            {
+                default: insertCommand = $"INSERT INTO [{tableName}] ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
+                case mssql: insertCommand = $"INSERT INTO [{tableName}] ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
+                case mysql: insertCommand = $"INSERT INTO {tableName} ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
+            }
+            await connection.ExecuteAsync(insertCommand, data);
+            Console.WriteLine($"Data reseted into table {tableName} successfully.");
+        }
+    }
     private async Task MssqlDeleteData()
     {
-        await connection.ExecuteAsync("EXEC sp_MSForEachTable 'DELETE FROM ?'");
+        await connection.ExecuteAsync(@"
+EXEC sp_MSforeachtable 'DISABLE TRIGGER ALL ON ?'
+EXEC sp_MSforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'
+EXEC sp_MSforeachtable 'SET QUOTED_IDENTIFIER ON; DELETE FROM ?'
+EXEC sp_MSforeachtable 'ALTER TABLE ? CHECK CONSTRAINT ALL'
+EXEC sp_MSforeachtable 'ENABLE TRIGGER ALL ON ?'");
     }
     private async Task MysqlDeleteData()
     {
         string deleteQuery = await connection.QueryFirstAsync<string>(@"
-SET FOREIGN_KEY_CHECKS = 0;
 SET @tables = NULL;
 SELECT GROUP_CONCAT(CONCAT('DELETE FROM ', table_name) SEPARATOR ';') INTO @tables
-FROM information_schema.tables WHERE table_schema = 'Etdb';
+FROM information_schema.tables WHERE table_schema = @dbname;
 SELECT @tables;", new { dbname = connection.Database });
-        await connection.ExecuteAsync($"{deleteQuery};SET FOREIGN_KEY_CHECKS = 1;");
+        await connection.ExecuteAsync($"SET FOREIGN_KEY_CHECKS = 0;{deleteQuery};SET FOREIGN_KEY_CHECKS = 1;");
     }
     public IEnumerable<IDictionary<string, object>> ReadCsv(string filePath)
     {
