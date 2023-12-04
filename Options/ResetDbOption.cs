@@ -66,7 +66,10 @@ public class ResetDbOption
             case postgres: Console.Error.WriteLine("Future feature, postgres is not yet supported."); Environment.Exit(1); break;
         }
     }
+    private async Task PostgresDeleteData()
+    {
 
+    }
     private async Task InsertData()
     {
         foreach (string csvFilePath in InputPaths)
@@ -113,7 +116,7 @@ FROM information_schema.tables WHERE table_schema = @dbname;
 SELECT @tables;", new { dbname = connection.Database });
         await connection.ExecuteAsync($"SET FOREIGN_KEY_CHECKS = 0;{deleteQuery};SET FOREIGN_KEY_CHECKS = 1;");
     }
-    public IEnumerable<IDictionary<string, object>> ReadCsv(string filePath)
+    private IEnumerable<IDictionary<string, object>> ReadCsv(string filePath)
     {
         using (var reader = new StreamReader(filePath))
         using (var csv = new CsvReader(reader, new CsvHelper.Configuration.CsvConfiguration(CultureInfo.InvariantCulture)
