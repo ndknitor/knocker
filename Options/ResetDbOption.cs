@@ -6,7 +6,7 @@ using CsvHelper;
 using Dapper;
 using MySqlConnector;
 
-[Verb("resetdb", HelpText = "Reset database from file")]
+[Verb("reset", HelpText = "Reset database from file")]
 public class ResetDbOption
 {
     [Option('i', "input", Required = true, HelpText = "Set data input to reset path (CSV)")]
