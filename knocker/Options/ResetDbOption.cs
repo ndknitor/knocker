@@ -51,7 +51,6 @@ public class ResetDbOption
         {
             DeleteData();
             InsertData();
-            Console.WriteLine("Reset data successfully");
         }
         catch (System.Exception ex)
         {
@@ -100,7 +99,7 @@ public class ResetDbOption
                 case mysql: insertCommand = MysqlInsertCommand(columns, tableName); break;
             }
             connection.Execute(insertCommand, data);
-            Console.WriteLine($"Data reseted into table {tableName} successfully.");
+            Console.WriteLine($"Table {tableName}'s data has been reseted successfully.");
         }
     }
     private string MssqlInsertCommand(string[] columns, string tableName)
