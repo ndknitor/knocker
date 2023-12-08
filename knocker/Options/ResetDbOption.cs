@@ -39,7 +39,7 @@ public class ResetDbOption
         }
     }
 
-    public async Task Call()
+    public void Call()
     {
         string[] allowedProviders = { mssql, mysql, postgres };
         if (Array.IndexOf(allowedProviders, Provider) == -1)
@@ -49,7 +49,7 @@ public class ResetDbOption
         }
         try
         {
-            await DeleteData();
+            DeleteData();
             InsertData();
             Console.WriteLine("Reset data successfully");
         }
@@ -61,13 +61,13 @@ public class ResetDbOption
         }
 
     }
-    private async Task DeleteData()
+    private void DeleteData()
     {
         switch (Provider)
         {
             default: MssqlDeleteData(); break;
             case mssql: MssqlDeleteData(); break;
-            case mysql: await MysqlDeleteData(); break;
+            case mysql: MysqlDeleteData(); break;
             case postgres: PostgresDeleteData(); break;
         }
     }
@@ -93,16 +93,35 @@ public class ResetDbOption
                 continue;
             }
             string insertCommand = null;
-            string columnsText = string.Join(", ", columns);
             switch (Provider)
             {
-                default: insertCommand = $"INSERT INTO [{tableName}] ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
-                case mssql: insertCommand = $"INSERT INTO [{tableName}] ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
-                case mysql: insertCommand = $"INSERT INTO {tableName} ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
+                default: insertCommand = MssqlInsertCommand(columns, tableName); break;
+                case mssql: insertCommand = MssqlInsertCommand(columns, tableName); break;
+                case mysql: insertCommand = MysqlInsertCommand(columns, tableName); break;
             }
             connection.Execute(insertCommand, data);
             Console.WriteLine($"Data reseted into table {tableName} successfully.");
         }
+    }
+    private string MssqlInsertCommand(string[] columns, string tableName)
+    {
+        StringBuilder columnsText = new StringBuilder();
+        foreach (var item in columns)
+        {
+            columnsText.Append($"[{item}],");
+        }
+        columnsText.Remove(columnsText.Length - 1, 1);
+        return $"INSERT INTO [{tableName}] ({columnsText}) VALUES (@{string.Join(", @", columns)})";
+    }
+    private string MysqlInsertCommand(string[] columns, string tableName)
+    {
+        StringBuilder columnsText = new StringBuilder();
+        foreach (var item in columns)
+        {
+            columnsText.Append($"`{item}`,");
+        }
+        columnsText.Remove(columnsText.Length - 1, 1);
+        return $"INSERT INTO {tableName} ({columnsText}) VALUES (@{string.Join(", @", columns)})";
     }
     private void MssqlDeleteData()
     {
@@ -119,14 +138,14 @@ public class ResetDbOption
         EXEC sp_MSForEachTable 'ALTER TABLE ? CHECK CONSTRAINT ALL'
         EXEC sp_MSForEachTable 'ENABLE TRIGGER ALL ON ?'");
     }
-    private async Task MysqlDeleteData()
+    private void MysqlDeleteData()
     {
-        string deleteQuery = await connection.QueryFirstAsync<string>(@"
+        string deleteQuery = connection.QueryFirst<string>(@"
 SET @tables = NULL;
 SELECT GROUP_CONCAT(CONCAT('DELETE FROM ', table_name) SEPARATOR ';') INTO @tables
 FROM information_schema.tables WHERE table_schema = @dbname AND TABLE_NAME != @excludeTable;
 SELECT @tables;", new { dbname = connection.Database, excludeTable = ExcludeTable });
-        await connection.ExecuteAsync($"SET FOREIGN_KEY_CHECKS = 0;{deleteQuery};SET FOREIGN_KEY_CHECKS = 1;");
+        connection.Execute($"SET FOREIGN_KEY_CHECKS = 0;{deleteQuery};SET FOREIGN_KEY_CHECKS = 1;");
     }
     private IEnumerable<IDictionary<string, object>> ReadCsv(string filePath)
     {
@@ -145,7 +164,16 @@ SELECT @tables;", new { dbname = connection.Database, excludeTable = ExcludeTabl
 
                 foreach (var keyValuePair in record)
                 {
-                    dictionary[keyValuePair.Key] = keyValuePair.Value;
+                    string value = keyValuePair.Value;
+                    int intValue = 0;
+                    if (int.TryParse(value, out intValue))
+                    {
+                        dictionary[keyValuePair.Key] = intValue;
+                    }
+                    else
+                    {
+                        dictionary[keyValuePair.Key] = keyValuePair.Value;
+                    }
                 }
 
                 result.Add(dictionary);

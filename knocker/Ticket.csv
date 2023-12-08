@@ -1,0 +1,6 @@
+TicketId,Status,Price,TripId,SeatId,BookedDate,UserId,From,To
+1,1,30,1,1,2023-01-15 09:30:00,1,CityA,CityB
+2,0,25,2,3,2023-02-28 14:00:00,2,TownX,TownY
+3,1,35,3,5,2023-03-20 16:45:00,3,VillageP,VillageQ
+4,0,40,4,2,2023-04-10 11:00:00,4,MetroZ,MetroW
+5,1,28,5,6,2023-05-25 17:30:00,5,SuburbM,SuburbN
