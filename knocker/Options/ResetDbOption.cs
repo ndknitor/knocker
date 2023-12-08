@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using System.Data.SqlTypes;
 using System.Globalization;
 using System.Text;
 using CommandLine;
@@ -18,6 +19,8 @@ public class ResetDbOption
     public string Delimiter { get; set; } = ";";
     [Option('p', "provider", Required = false, HelpText = "Database provider")]
     public string Provider { get; set; } = "mssql";
+    [Option('e', "exclude", Required = false, HelpText = "Exclude tables")]
+    public string ExcludeTable { get; set; } = "";
     private IDbConnection c;
     private IDbConnection connection
     {
@@ -103,20 +106,26 @@ public class ResetDbOption
     }
     private void MssqlDeleteData()
     {
-        connection.Query(@"
-EXEC sp_MSForEachTable 'DISABLE TRIGGER ALL ON ?'
-EXEC sp_MSForEachTable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'
-EXEC sp_MSForEachTable 'DELETE FROM ?'
-EXEC sp_MSForEachTable 'ALTER TABLE ? CHECK CONSTRAINT ALL'
-EXEC sp_MSForEachTable 'ENABLE TRIGGER ALL ON ?'");
+        IEnumerable<string> tables = connection.Query<string>("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = 'dbo' AND TABLE_NAME <> @excludeTable;", new { excludeTable = ExcludeTable });
+        StringBuilder deleteQuery = new StringBuilder();
+        foreach (string item in tables)
+        {
+            deleteQuery.AppendLine($"Delete from [{item}]");
+        }
+        connection.Execute($@"
+        EXEC sp_MSForEachTable 'DISABLE TRIGGER ALL ON ?'
+        EXEC sp_MSForEachTable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'
+        {deleteQuery}
+        EXEC sp_MSForEachTable 'ALTER TABLE ? CHECK CONSTRAINT ALL'
+        EXEC sp_MSForEachTable 'ENABLE TRIGGER ALL ON ?'");
     }
     private async Task MysqlDeleteData()
     {
         string deleteQuery = await connection.QueryFirstAsync<string>(@"
 SET @tables = NULL;
 SELECT GROUP_CONCAT(CONCAT('DELETE FROM ', table_name) SEPARATOR ';') INTO @tables
-FROM information_schema.tables WHERE table_schema = @dbname;
-SELECT @tables;", new { dbname = connection.Database });
+FROM information_schema.tables WHERE table_schema = @dbname AND TABLE_NAME != @excludeTable;
+SELECT @tables;", new { dbname = connection.Database, excludeTable = ExcludeTable });
         await connection.ExecuteAsync($"SET FOREIGN_KEY_CHECKS = 0;{deleteQuery};SET FOREIGN_KEY_CHECKS = 1;");
     }
     private IEnumerable<IDictionary<string, object>> ReadCsv(string filePath)
