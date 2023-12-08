@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using System.Globalization;
+using System.Text;
 using CommandLine;
 using CsvHelper;
 using Dapper;
@@ -46,7 +47,8 @@ public class ResetDbOption
         try
         {
             await DeleteData();
-            await InsertData();
+            InsertData();
+            Console.WriteLine("Reset data successfully");
         }
         catch (System.Exception ex)
         {
@@ -60,17 +62,18 @@ public class ResetDbOption
     {
         switch (Provider)
         {
-            default: await MssqlDeleteData(); break;
-            case mssql: await MssqlDeleteData(); break;
+            default: MssqlDeleteData(); break;
+            case mssql: MssqlDeleteData(); break;
             case mysql: await MysqlDeleteData(); break;
-            case postgres: Console.Error.WriteLine("Future feature, postgres is not yet supported."); Environment.Exit(1); break;
+            case postgres: PostgresDeleteData(); break;
         }
     }
-    private async Task PostgresDeleteData()
+    private void PostgresDeleteData()
     {
-
+        Console.Error.WriteLine("Future feature, postgres is not yet supported.");
+        Environment.Exit(1);
     }
-    private async Task InsertData()
+    private void InsertData()
     {
         foreach (string csvFilePath in InputPaths)
         {
@@ -94,18 +97,18 @@ public class ResetDbOption
                 case mssql: insertCommand = $"INSERT INTO [{tableName}] ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
                 case mysql: insertCommand = $"INSERT INTO {tableName} ({columnsText}) VALUES (@{string.Join(", @", data.ElementAt(0).Keys)})"; break;
             }
-            await connection.ExecuteAsync(insertCommand, data);
+            connection.Execute(insertCommand, data);
             Console.WriteLine($"Data reseted into table {tableName} successfully.");
         }
     }
-    private async Task MssqlDeleteData()
+    private void MssqlDeleteData()
     {
-        await connection.ExecuteAsync(@"
-EXEC sp_MSforeachtable 'DISABLE TRIGGER ALL ON ?'
-EXEC sp_MSforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'
-EXEC sp_MSforeachtable 'SET QUOTED_IDENTIFIER ON; DELETE FROM ?'
-EXEC sp_MSforeachtable 'ALTER TABLE ? CHECK CONSTRAINT ALL'
-EXEC sp_MSforeachtable 'ENABLE TRIGGER ALL ON ?'");
+        connection.Query(@"
+EXEC sp_MSForEachTable 'DISABLE TRIGGER ALL ON ?'
+EXEC sp_MSForEachTable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'
+EXEC sp_MSForEachTable 'DELETE FROM ?'
+EXEC sp_MSForEachTable 'ALTER TABLE ? CHECK CONSTRAINT ALL'
+EXEC sp_MSForEachTable 'ENABLE TRIGGER ALL ON ?'");
     }
     private async Task MysqlDeleteData()
     {
