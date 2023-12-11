@@ -1,10 +1,8 @@
 using System.Data;
 using System.Data.SqlClient;
-using System.Data.SqlTypes;
-using System.Globalization;
 using System.Text;
 using CommandLine;
-using CsvHelper;
+using KnCsvReader;
 using Dapper;
 using MySqlConnector;
 
@@ -20,7 +18,7 @@ public class ResetDbOption
     [Option('p', "provider", Required = false, HelpText = "Database provider")]
     public string Provider { get; set; } = "mssql";
     [Option('e', "exclude", Required = false, HelpText = "Exclude tables")]
-    public string ExcludeTable { get; set; } = "";
+    public IEnumerable<string> ExcludeTables { get; set; } = new List<string>();
     private IDbConnection c;
     private IDbConnection connection
     {
@@ -81,7 +79,7 @@ public class ResetDbOption
         {
             var tableName = new FileInfo(csvFilePath).Name.Split('.')[0];
             string[] columns = null;
-            IEnumerable<IDictionary<string, object>> data = ReadCsv(csvFilePath);
+            IEnumerable<IDictionary<string, object>> data = Csv.ReadFile(csvFilePath, Delimiter);
             if (data.Count() > 0)
             {
                 columns = data.ElementAt(0).Keys.ToArray();
@@ -124,7 +122,7 @@ public class ResetDbOption
     }
     private void MssqlDeleteData()
     {
-        IEnumerable<string> tables = connection.Query<string>("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = 'dbo' AND TABLE_NAME <> @excludeTable;", new { excludeTable = ExcludeTable });
+        IEnumerable<string> tables = connection.Query<string>("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = 'dbo' AND TABLE_NAME not in @excludeTables;", new { excludeTables = ExcludeTables });
         StringBuilder deleteQuery = new StringBuilder();
         foreach (string item in tables)
         {
@@ -142,45 +140,45 @@ public class ResetDbOption
         string deleteQuery = connection.QueryFirst<string>(@"
 SET @tables = NULL;
 SELECT GROUP_CONCAT(CONCAT('DELETE FROM ', table_name) SEPARATOR ';') INTO @tables
-FROM information_schema.tables WHERE table_schema = @dbname AND TABLE_NAME != @excludeTable;
-SELECT @tables;", new { dbname = connection.Database, excludeTable = ExcludeTable });
+FROM information_schema.tables WHERE table_schema = @dbname AND TABLE_NAME not in @excludeTables;
+SELECT @tables;", new { dbname = connection.Database, excludeTables = ExcludeTables });
         connection.Execute($"SET FOREIGN_KEY_CHECKS = 0;{deleteQuery};SET FOREIGN_KEY_CHECKS = 1;");
     }
-    private IEnumerable<IDictionary<string, object>> ReadCsv(string filePath)
-    {
-        using (var reader = new StreamReader(filePath))
-        using (var csv = new CsvReader(reader, new CsvHelper.Configuration.CsvConfiguration(CultureInfo.InvariantCulture)
-        {
-            Delimiter = Delimiter
-        }))
-        {
-            var records = csv.GetRecords<dynamic>();
-            var result = new List<IDictionary<string, object>>();
+    // private IEnumerable<IDictionary<string, object>> ReadCsv(string filePath)
+    // {
+    //     using (var reader = new StreamReader(filePath))
+    //     using (var csv = new CsvReader(reader, new CsvHelper.Configuration.CsvConfiguration(CultureInfo.InvariantCulture)
+    //     {
+    //         Delimiter = Delimiter
+    //     }))
+    //     {
+    //         var records = csv.GetRecords<dynamic>();
+    //         var result = new List<IDictionary<string, object>>();
 
-            foreach (var record in records)
-            {
-                var dictionary = new Dictionary<string, object>();
+    //         foreach (var record in records)
+    //         {
+    //             var dictionary = new Dictionary<string, object>();
 
-                foreach (var keyValuePair in record)
-                {
-                    string value = keyValuePair.Value;
-                    int intValue = 0;
-                    if (int.TryParse(value, out intValue))
-                    {
-                        dictionary[keyValuePair.Key] = intValue;
-                    }
-                    else
-                    {
-                        dictionary[keyValuePair.Key] = keyValuePair.Value;
-                    }
-                }
+    //             foreach (var keyValuePair in record)
+    //             {
+    //                 string value = keyValuePair.Value;
+    //                 int intValue = 0;
+    //                 if (int.TryParse(value, out intValue))
+    //                 {
+    //                     dictionary[keyValuePair.Key] = intValue;
+    //                 }
+    //                 else
+    //                 {
+    //                     dictionary[keyValuePair.Key] = keyValuePair.Value;
+    //                 }
+    //             }
 
-                result.Add(dictionary);
-            }
+    //             result.Add(dictionary);
+    //         }
 
-            return result;
-        }
-    }
+    //         return result;
+    //     }
+    // }
     const string mssql = "mssql";
     const string mysql = "mysql";
     const string postgres = "postgres";
