@@ -40,11 +40,7 @@ public class MysqlService : IService
     }
     private void DeleteData(IDbTransaction transaction)
     {
-        string deleteQuery = transaction.QueryFirst<string>(@"
-        SET @tables = NULL;
-        SELECT GROUP_CONCAT(CONCAT('DELETE FROM ', table_name) SEPARATOR ';') INTO @tables
-        FROM information_schema.tables WHERE table_schema = @dbname AND TABLE_NAME not in @excludeTables;
-        SELECT @tables;", new { dbname = connection.Database, excludeTables = excludeTables });
+        string deleteQuery = transaction.QueryFirst<string>(@"SELECT GROUP_CONCAT(CONCAT('DELETE FROM ', table_name) SEPARATOR ';') FROM information_schema.tables WHERE table_schema = @dbname AND TABLE_NAME not in @excludeTables;", new { dbname = connection.Database, excludeTables = excludeTables });
         transaction.Execute(deleteQuery);
     }
     private void InsertData(IDbTransaction transaction)

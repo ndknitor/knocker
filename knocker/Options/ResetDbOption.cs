@@ -25,15 +25,8 @@ public class ResetDbOption
         }
         try
         {
-            List<string> files = new List<string>();
             DirectoryInfo directory = new DirectoryInfo(InputPath);
-            foreach (FileInfo item in directory.GetFiles())
-            {
-                if (item.Extension == ".csv")
-                {
-                    files.Add(item.FullName);
-                }
-            }
+            var files = directory.GetFiles().Where(f => f.Extension == ".csv").Select(f => f.FullName);
 
             IService service = null;
             switch (Provider)
