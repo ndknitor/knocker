@@ -1,6 +1,6 @@
 BusId,Name,LicensePlate,Deleted
-1,BlueBus,ABC123,0
-2,RedExpress,XYZ789,0
-3,GreenTransit,DEF456,1
-4,YellowShuttle,GHI789,0
-5,OrangeTransport,PQR321,0
+1,BlueBus,ABC123,false
+2,RedExpress,XYZ789,false
+3,GreenTransit,DEF456,true
+4,YellowShuttle,GHI789,false
+5,OrangeTransport,PQR321,false

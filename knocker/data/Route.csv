@@ -1,6 +1,6 @@
 RouteId,From,To,BasePrice,Deleted
-1,CityA,CityB,100,0
-2,TownX,TownY,75,0
-3,VillageP,VillageQ,50,0
-4,MetroZ,MetroW,120,0
-5,SuburbM,SuburbN,90,0
+1,CityA,CityB,100,false
+2,TownX,TownY,75,false
+3,VillageP,VillageQ,50,false
+4,MetroZ,MetroW,120,false
+5,SuburbM,SuburbN,90,false

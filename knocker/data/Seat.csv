@@ -1,7 +1,7 @@
 SeatId,BusId,Price,Deleted,Name
-1,1,20,0,WindowFrontLeft
-2,1,15,0,AisleFront
-3,2,18,1,WindowRearLeft
-4,2,12,0,AisleRear
-5,3,25,0,WindowFrontRight
-6,3,20,0,AisleMiddle
+1,1,20,false,WindowFrontLeft
+2,1,15,false,AisleFront
+3,2,18,true,WindowRearLeft
+4,2,12,false,AisleRear
+5,3,25,false,WindowFrontRight
+6,3,20,false,AisleMiddle
