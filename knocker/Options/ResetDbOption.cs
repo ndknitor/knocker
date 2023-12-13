@@ -2,7 +2,7 @@ using System.Data.SqlClient;
 using CommandLine;
 using MySqlConnector;
 
-[Verb("reset", HelpText = "Reset database from file")]
+[Verb("reset", HelpText = "Reset database from CSV files")]
 public class ResetDbOption
 {
     [Option('i', "input", Required = true, HelpText = "Set data input to reset path (CSV)")]
@@ -17,7 +17,7 @@ public class ResetDbOption
     public IEnumerable<string> ExcludeTables { get; set; } = new List<string>();
     public void Call()
     {
-        string[] allowedProviders = { mssql, mysql, postgres };
+        string[] allowedProviders = { Const.mssql, Const.mysql, Const.postgres };
         if (Array.IndexOf(allowedProviders, Provider) == -1)
         {
             Console.WriteLine($"Invalid database provider: {Provider}. Allowed values are: {string.Join(", ", allowedProviders)}.");
@@ -32,9 +32,9 @@ public class ResetDbOption
             switch (Provider)
             {
                 default: service = new MssqlService(new SqlConnection(ConnectionString), files, Delimiter, ExcludeTables); break;
-                case mssql: service = new MssqlService(new SqlConnection(ConnectionString), files, Delimiter, ExcludeTables); break;
-                case mysql: service = new MysqlService(new MySqlConnection(ConnectionString), files, Delimiter, ExcludeTables); break;
-                case postgres: service = new PostgresService(new Npgsql.NpgsqlConnection(ConnectionString), files, Delimiter, ExcludeTables); break;
+                case Const.mssql: service = new MssqlService(new SqlConnection(ConnectionString), files, Delimiter, ExcludeTables); break;
+                case Const.mysql: service = new MysqlService(new MySqlConnection(ConnectionString), files, Delimiter, ExcludeTables); break;
+                case Const.postgres: service = new PostgresService(new Npgsql.NpgsqlConnection(ConnectionString), files, Delimiter, ExcludeTables); break;
             }
             service.PerformReset();
         }
@@ -42,11 +42,7 @@ public class ResetDbOption
         {
             Console.Error.WriteLine(ex.Message);
             Environment.Exit(1);
-            throw;
         }
 
     }
-    const string mssql = "mssql";
-    const string mysql = "mysql";
-    const string postgres = "postgres";
 }

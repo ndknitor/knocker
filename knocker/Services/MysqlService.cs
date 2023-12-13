@@ -25,10 +25,10 @@ public class MysqlService : IService
         {
             try
             {
-                transaction.Execute("SET FOREIGN_KEY_CHECKS = 0;");
+                DisableForeignKeyCheck(transaction);
                 DeleteData(transaction);
                 InsertData(transaction);
-                transaction.Execute("SET FOREIGN_KEY_CHECKS = 1;");
+                EnableForeignKeyCheck(transaction);
                 transaction.Commit();
             }
             catch (System.Exception)
@@ -37,6 +37,35 @@ public class MysqlService : IService
                 throw;
             }
         }
+    }
+    public void PerformDelete()
+    {
+        if (connection.State == ConnectionState.Closed)
+            connection.Open();
+        using (IDbTransaction transaction = connection.BeginTransaction())
+        {
+            try
+            {
+                DisableForeignKeyCheck(transaction);
+                DeleteData(transaction);
+                EnableForeignKeyCheck(transaction);
+                transaction.Commit();
+            }
+            catch (System.Exception)
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+    }
+    private void DisableForeignKeyCheck(IDbTransaction transaction)
+    {
+        transaction.Execute("SET FOREIGN_KEY_CHECKS = 0;");
+
+    }
+    private void EnableForeignKeyCheck(IDbTransaction transaction)
+    {
+        transaction.Execute("SET FOREIGN_KEY_CHECKS = 1;");
     }
     private void DeleteData(IDbTransaction transaction)
     {

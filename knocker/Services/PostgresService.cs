@@ -26,10 +26,10 @@ public class PostgresService : IService
         {
             try
             {
-                transaction.Execute("SET session_replication_role = 'replica';");
+                DisableForeignKeyCheck(transaction);
                 DeleteData(transaction);
                 InsertData(transaction);
-                transaction.Execute("SET session_replication_role = 'origin';");
+                EnableForeignKeyCheck(transaction);
                 transaction.Commit();
             }
             catch (System.Exception)
@@ -38,6 +38,34 @@ public class PostgresService : IService
                 throw;
             }
         }
+    }
+    public void PerformDelete()
+    {
+        if (connection.State == ConnectionState.Closed)
+            connection.Open();
+        using (IDbTransaction transaction = connection.BeginTransaction())
+        {
+            try
+            {
+                DisableForeignKeyCheck(transaction);
+                DeleteData(transaction);
+                EnableForeignKeyCheck(transaction);
+                transaction.Commit();
+            }
+            catch (System.Exception)
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+    }
+    private void DisableForeignKeyCheck(IDbTransaction transaction)
+    {
+        transaction.Execute("SET session_replication_role = 'replica';");
+    }
+    private void EnableForeignKeyCheck(IDbTransaction transaction)
+    {
+        transaction.Execute("SET session_replication_role = 'origin';");
     }
     private void DeleteData(IDbTransaction transaction)
     {

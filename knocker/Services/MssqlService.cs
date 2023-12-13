@@ -25,14 +25,10 @@ public class MssqlService : IService
         {
             try
             {
-                transaction.Execute(@"
-            EXEC sp_MSForEachTable 'DISABLE TRIGGER ALL ON ?'
-            EXEC sp_MSForEachTable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'");
+                DisableForeignKeyCheck(transaction);
                 DeleteData(transaction);
                 InsertData(transaction);
-                transaction.Execute(@"
-            EXEC sp_MSForEachTable 'ALTER TABLE ? CHECK CONSTRAINT ALL'
-            EXEC sp_MSForEachTable 'ENABLE TRIGGER ALL ON ?'");
+                EnableForeignKeyCheck(transaction);
                 transaction.Commit();
             }
             catch (System.Exception)
@@ -42,7 +38,39 @@ public class MssqlService : IService
             }
 
         }
+    }
+    public void PerformDelete()
+    {
+        if (connection.State == ConnectionState.Closed)
+            connection.Open();
+        using (IDbTransaction transaction = connection.BeginTransaction())
+        {
+            try
+            {
+                DisableForeignKeyCheck(transaction);
+                DeleteData(transaction);
+                EnableForeignKeyCheck(transaction);
+                transaction.Commit();
+            }
+            catch (System.Exception)
+            {
+                transaction.Rollback();
+                throw;
+            }
 
+        }
+    }
+    private void DisableForeignKeyCheck(IDbTransaction transaction)
+    {
+        transaction.Execute(@"
+            EXEC sp_MSForEachTable 'DISABLE TRIGGER ALL ON ?'
+            EXEC sp_MSForEachTable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'");
+    }
+    private void EnableForeignKeyCheck(IDbTransaction transaction)
+    {
+        transaction.Execute(@"
+            EXEC sp_MSForEachTable 'ALTER TABLE ? CHECK CONSTRAINT ALL'
+            EXEC sp_MSForEachTable 'ENABLE TRIGGER ALL ON ?'");
     }
     private void DeleteData(IDbTransaction transaction)
     {

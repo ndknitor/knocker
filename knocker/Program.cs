@@ -4,5 +4,8 @@
 //string[] mysql = ["-i", "data", "-d", ",", "-p", "mysql", "-c", "Server=127.0.0.1;Database=Etdb;User Id=root;Password=12345678aA#"];
 //string[] postgres = ["-i", "data", "-d", ",", "-p", "postgres", "-c", "Server=127.0.0.1;Database=Etdb;User Id=odoo;Password=odoo;"];
 
-Parser.Default.ParseArguments<ResetDbOption>(args)
-.WithParsed<ResetDbOption>(o => o.Call());
+//string[] mysqlDelete = ["delete", "-p", "mysql", "-c", "Server=127.0.0.1;Database=Test;User Id=root;Password=12345678aA#"];
+
+Parser.Default.ParseArguments<ResetDbOption, DeleteDbOption>(args)
+.WithParsed<ResetDbOption>(o => o.Call())
+.WithParsed<DeleteDbOption>(o => o.Call());
