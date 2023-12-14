@@ -16,7 +16,9 @@ public class DeleteDbOption
         string[] allowedProviders = { Const.mssql, Const.mysql, Const.postgres };
         if (Array.IndexOf(allowedProviders, Provider) == -1)
         {
-            Console.WriteLine($"Invalid database provider: {Provider}. Allowed values are: {string.Join(", ", allowedProviders)}.");
+            Console.WriteLine(
+$@"Invalid database provider: {Provider}.
+Allowed values are: {string.Join(", ", allowedProviders)}.");
             Environment.Exit(1);
         }
         try
