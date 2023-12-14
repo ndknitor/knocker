@@ -31,10 +31,10 @@ public class ResetDbOption
             IService service = null;
             switch (Provider)
             {
-                default: service = new MssqlService(new SqlConnection(ConnectionString), files, Delimiter, ExcludeTables); break;
-                case Const.mssql: service = new MssqlService(new SqlConnection(ConnectionString), files, Delimiter, ExcludeTables); break;
-                case Const.mysql: service = new MysqlService(new MySqlConnection(ConnectionString), files, Delimiter, ExcludeTables); break;
-                case Const.postgres: service = new PostgresService(new Npgsql.NpgsqlConnection(ConnectionString), files, Delimiter, ExcludeTables); break;
+                default: service = new MssqlService{Connection = new SqlConnection(ConnectionString), Delimiter = Delimiter, ExcludeTables = ExcludeTables, InputPaths = files}; break;
+                case Const.mssql: service = new MssqlService{Connection = new SqlConnection(ConnectionString), Delimiter = Delimiter, ExcludeTables = ExcludeTables, InputPaths = files}; break;
+                case Const.mysql: service = new MysqlService{Connection = new MySqlConnection(ConnectionString), Delimiter = Delimiter, ExcludeTables = ExcludeTables, InputPaths = files}; break;
+                case Const.postgres: service = new PostgresService{Connection = new Npgsql.NpgsqlConnection(ConnectionString), Delimiter = Delimiter, ExcludeTables = ExcludeTables, InputPaths = files}; break;
             }
             service.PerformReset();
         }
