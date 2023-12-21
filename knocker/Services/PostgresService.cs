@@ -6,6 +6,7 @@ using Npgsql;
 
 public class PostgresService : IService
 {
+    //SELECT setval(pg_get_serial_sequence('{tableName}', '{columnName}'), {newIdentityValue}, false);
     public NpgsqlConnection Connection { get; set; }
     public IEnumerable<string> InputPaths { get; set; }
     public string Delimiter { get; set; }

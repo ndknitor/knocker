@@ -10,6 +10,7 @@ public class MssqlService : IService
     public IEnumerable<string> InputPaths { get; set; }
     public string Delimiter { get; set; }
     public IEnumerable<string> ExcludeTables { get; set; }
+    private IEnumerable<string> tables = null;
 
     public void PerformReset()
     {
@@ -21,6 +22,7 @@ public class MssqlService : IService
             {
                 DisableForeignKeyCheck(transaction);
                 DeleteData(transaction);
+                ResetIdentityInsert(transaction);
                 InsertData(transaction);
                 EnableForeignKeyCheck(transaction);
                 transaction.Commit();
@@ -43,6 +45,7 @@ public class MssqlService : IService
             {
                 DisableForeignKeyCheck(transaction);
                 DeleteData(transaction);
+                ResetIdentityInsert(transaction);
                 EnableForeignKeyCheck(transaction);
                 transaction.Commit();
             }
@@ -52,6 +55,36 @@ public class MssqlService : IService
                 throw;
             }
 
+        }
+    }
+    private void TurnOffIdentityInsert(IDbTransaction transaction, string table)
+    {
+        if (HaveIdentityColumn(table, transaction))
+        {
+            transaction.Execute($"SET IDENTITY_INSERT [{table}] Off");
+        }
+    }
+    private void TurnOnIdentityInsert(IDbTransaction transaction, string table)
+    {
+        if (HaveIdentityColumn(table, transaction))
+        {
+            transaction.Execute($"SET IDENTITY_INSERT [{table}] On");
+        }
+    }
+    private void ResetIdentityInsert(IDbTransaction transaction)
+    {
+        tables ??= GetTables(transaction);
+        StringBuilder query = new StringBuilder();
+        foreach (var table in tables)
+        {
+            if (HaveIdentityColumn(table, transaction))
+            {
+                query.AppendLine($"DBCC CHECKIDENT ('[{table}]', RESEED, 1)");
+            }
+        }
+        if (query.Length > 0)
+        {
+            transaction.Execute(query.ToString());
         }
     }
     private void DisableForeignKeyCheck(IDbTransaction transaction)
@@ -68,7 +101,7 @@ public class MssqlService : IService
     }
     private void DeleteData(IDbTransaction transaction)
     {
-        IEnumerable<string> tables = transaction.Query<string>("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = 'dbo' AND TABLE_NAME not in @excludeTables;", new { excludeTables = ExcludeTables });
+        tables ??= GetTables(transaction);
         StringBuilder deleteQuery = new StringBuilder();
         foreach (string item in tables)
         {
@@ -86,7 +119,9 @@ public class MssqlService : IService
             if (data.Count() > 0)
             {
                 columns = data.ElementAt(0).Keys.ToArray();
+                TurnOnIdentityInsert(transaction, tableName);
                 transaction.Execute(InsertCommand(columns, tableName), data);
+                TurnOffIdentityInsert(transaction, tableName);
                 Console.WriteLine($"Table {tableName}'s data has been reseted successfully.");
             }
             else
@@ -106,4 +141,6 @@ public class MssqlService : IService
         columnsText.Remove(columnsText.Length - 1, 1);
         return $"INSERT INTO [{tableName}] ({columnsText}) VALUES (@{string.Join(", @", columns)})";
     }
+    private IEnumerable<string> GetTables(IDbTransaction transaction) => transaction.Query<string>("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = 'dbo' AND TABLE_NAME not in @excludeTables;", new { excludeTables = ExcludeTables });
+    private bool HaveIdentityColumn(string tableName, IDbTransaction transaction) => transaction.QueryFirstOrDefault<bool>("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @tableName AND COLUMNPROPERTY(OBJECT_ID(TABLE_NAME), COLUMN_NAME, 'IsIdentity') = 1", new { tableName });
 }

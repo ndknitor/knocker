@@ -6,6 +6,7 @@ using MySqlConnector;
 
 public class MysqlService : IService
 {
+    //ALTER TABLE {tableName} AUTO_INCREMENT = {newAutoIncrementValue}
     public MySqlConnection Connection { get; set; }
     public IEnumerable<string> InputPaths { get; set; }
     public string Delimiter { get; set; }
