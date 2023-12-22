@@ -11,8 +11,10 @@ public class PostgresService : IService
     public IEnumerable<string> InputPaths { get; set; }
     public string Delimiter { get; set; }
     public IEnumerable<string> ExcludeTables { get; set; }
+    private IEnumerable<string> tables = null;
     public void PerformReset()
     {
+        Console.Error.WriteLine("* Warning: Any table containing serial column will lead this application to unexpected behavior, please don't use serial column while using this application");
         if (Connection.State == ConnectionState.Closed)
             Connection.Open();
         using (IDbTransaction transaction = Connection.BeginTransaction())
@@ -34,6 +36,7 @@ public class PostgresService : IService
     }
     public void PerformDelete()
     {
+        Console.Error.WriteLine("* Warning: Any table containing serial column will lead this application to unexpected behavior, please don't use serial column while using this application");
         if (Connection.State == ConnectionState.Closed)
             Connection.Open();
         using (IDbTransaction transaction = Connection.BeginTransaction())
@@ -62,7 +65,7 @@ public class PostgresService : IService
     }
     private void DeleteData(IDbTransaction transaction)
     {
-        IEnumerable<string> tables = transaction.Query<string>("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public' AND tablename != ANY(@excludeTables)", new { excludeTables = ExcludeTables });
+        tables ??= transaction.Query<string>("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public' AND tablename != ANY(@excludeTables)", new { excludeTables = ExcludeTables });
         StringBuilder deleteQuery = new StringBuilder();
         foreach (string item in tables)
         {
@@ -100,4 +103,5 @@ public class PostgresService : IService
         columnsText.Remove(columnsText.Length - 1, 1);
         return $"INSERT INTO \"{tableName}\" ({columnsText}) VALUES (@{string.Join(", @", columns)})";
     }
+    private IEnumerable<string> GetTables(IDbTransaction transaction) => transaction.Query<string>("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name NOT IN @excludeTables;", new { excludeTables = ExcludeTables });
 }
