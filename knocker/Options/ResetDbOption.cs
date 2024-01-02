@@ -15,6 +15,8 @@ public class ResetDbOption
     public string Provider { get; set; } = "mssql";
     [Option('e', "exclude", Required = false, HelpText = "Exclude tables")]
     public IEnumerable<string> ExcludeTables { get; set; } = new List<string>();
+    [Option('r', "reset", Required = false, HelpText = "Reset auto-increament columns")]
+    public bool ResetAutoIncreasement { get; set; } = true;
     public void Call()
     {
         string[] allowedProviders = { Const.mssql, Const.mysql, Const.postgres };
@@ -31,10 +33,10 @@ public class ResetDbOption
             IService service = null;
             switch (Provider)
             {
-                default: service = new MssqlService{Connection = new SqlConnection(ConnectionString), Delimiter = Delimiter, ExcludeTables = ExcludeTables, InputPaths = files}; break;
-                case Const.mssql: service = new MssqlService{Connection = new SqlConnection(ConnectionString), Delimiter = Delimiter, ExcludeTables = ExcludeTables, InputPaths = files}; break;
-                case Const.mysql: service = new MysqlService{Connection = new MySqlConnection(ConnectionString), Delimiter = Delimiter, ExcludeTables = ExcludeTables, InputPaths = files}; break;
-                case Const.postgres: service = new PostgresService{Connection = new Npgsql.NpgsqlConnection(ConnectionString), Delimiter = Delimiter, ExcludeTables = ExcludeTables, InputPaths = files}; break;
+                default: service = new MssqlService { Connection = new SqlConnection(ConnectionString), Delimiter = Delimiter, ExcludeTables = ExcludeTables, InputPaths = files, ResetAutoIncreasement = ResetAutoIncreasement }; break;
+                case Const.mssql: service = new MssqlService { Connection = new SqlConnection(ConnectionString), Delimiter = Delimiter, ExcludeTables = ExcludeTables, InputPaths = files, ResetAutoIncreasement = ResetAutoIncreasement }; break;
+                case Const.mysql: service = new MysqlService { Connection = new MySqlConnection(ConnectionString), Delimiter = Delimiter, ExcludeTables = ExcludeTables, InputPaths = files, ResetAutoIncreasement = ResetAutoIncreasement }; break;
+                case Const.postgres: service = new PostgresService { Connection = new Npgsql.NpgsqlConnection(ConnectionString), Delimiter = Delimiter, ExcludeTables = ExcludeTables, InputPaths = files, ResetAutoIncreasement = ResetAutoIncreasement }; break;
             }
             service.PerformReset();
         }

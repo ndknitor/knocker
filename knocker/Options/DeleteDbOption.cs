@@ -11,6 +11,7 @@ public class DeleteDbOption
     public string Provider { get; set; } = Const.mssql;
     [Option('e', "exclude", Required = false, HelpText = "Exclude tables")]
     public IEnumerable<string> ExcludeTables { get; set; } = new List<string>();
+    public bool ResetAutoIncreasement { get; set; } = true;
     public void Call()
     {
         string[] allowedProviders = { Const.mssql, Const.mysql, Const.postgres };
@@ -26,10 +27,10 @@ Allowed values are: {string.Join(", ", allowedProviders)}.");
             IService service = null;
             switch (Provider)
             {
-                default: service = new MssqlService { Connection = new SqlConnection(ConnectionString), ExcludeTables = ExcludeTables }; break;
-                case Const.mssql: service = new MssqlService { Connection = new SqlConnection(ConnectionString), ExcludeTables = ExcludeTables }; break;
-                case Const.mysql: service = new MysqlService { Connection = new MySqlConnection(ConnectionString), ExcludeTables = ExcludeTables }; break;
-                case Const.postgres: service = new PostgresService { Connection = new Npgsql.NpgsqlConnection(ConnectionString), ExcludeTables = ExcludeTables }; break;
+                default: service = new MssqlService { Connection = new SqlConnection(ConnectionString), ExcludeTables = ExcludeTables, ResetAutoIncreasement = ResetAutoIncreasement }; break;
+                case Const.mssql: service = new MssqlService { Connection = new SqlConnection(ConnectionString), ExcludeTables = ExcludeTables, ResetAutoIncreasement = ResetAutoIncreasement }; break;
+                case Const.mysql: service = new MysqlService { Connection = new MySqlConnection(ConnectionString), ExcludeTables = ExcludeTables, ResetAutoIncreasement = ResetAutoIncreasement }; break;
+                case Const.postgres: service = new PostgresService { Connection = new Npgsql.NpgsqlConnection(ConnectionString), ExcludeTables = ExcludeTables, ResetAutoIncreasement = ResetAutoIncreasement }; break;
             }
             service.PerformDelete();
             Console.WriteLine("Delete all data successfully");

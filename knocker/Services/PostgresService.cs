@@ -11,9 +11,14 @@ public class PostgresService : IService
     public IEnumerable<string> InputPaths { get; set; }
     public string Delimiter { get; set; }
     public IEnumerable<string> ExcludeTables { get; set; }
+    public bool ResetAutoIncreasement { get; set; }
     private IEnumerable<string> tables = null;
     public void PerformReset()
     {
+        if (ResetAutoIncreasement)
+        {
+            return;
+        }
         Console.Error.WriteLine("* Warning: Any table containing serial column will lead this application to unexpected behavior, please don't use serial column while using this application");
         if (Connection.State == ConnectionState.Closed)
             Connection.Open();

@@ -10,6 +10,7 @@ public class MysqlService : IService
     public IEnumerable<string> InputPaths { get; set; }
     public string Delimiter { get; set; }
     public IEnumerable<string> ExcludeTables { get; set; }
+    public bool ResetAutoIncreasement { get; set; }
     private IEnumerable<string> tables = null;
     public void PerformReset()
     {
@@ -104,6 +105,10 @@ public class MysqlService : IService
     }
     private void ResetIdentityInsert(IDbTransaction transaction)
     {
+        if (ResetAutoIncreasement)
+        {
+            return;
+        }
         tables ??= GetTables(transaction);
         StringBuilder query = new StringBuilder();
         foreach (var table in tables)

@@ -11,6 +11,7 @@ public class MssqlService : IService
     public string Delimiter { get; set; }
     public IEnumerable<string> ExcludeTables { get; set; }
     private IEnumerable<string> tables = null;
+    public bool ResetAutoIncreasement { get; set; }
 
     public void PerformReset()
     {
@@ -73,6 +74,10 @@ public class MssqlService : IService
     }
     private void ResetIdentityInsert(IDbTransaction transaction)
     {
+        if (ResetAutoIncreasement)
+        {
+            return;
+        }
         tables ??= GetTables(transaction);
         StringBuilder query = new StringBuilder();
         foreach (var table in tables)
